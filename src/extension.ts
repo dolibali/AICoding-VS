@@ -52,12 +52,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	// 等待 workbench 完全初始化后，打开视图并尝试移动到右侧辅助栏
 	setTimeout(async () => {
 		console.log('[AI Coding] 开始初始化视图...');
-		
+
 		try {
 			// 步骤1: 先打开视图容器（确保它被加载）
 			await vscode.commands.executeCommand('workbench.view.extension.ai-coding');
 			console.log('[AI Coding] ✓ workbench.view.extension.ai-coding 执行成功');
-			
+
 			// 步骤2: 尝试移动视图容器到右侧辅助栏
 			// 注意：这个命令可能在某些 VS Code 版本中不可用
 			try {
@@ -69,11 +69,11 @@ export async function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand('workbench.action.focusAuxiliaryBar');
 				console.log('[AI Coding] ✓ focusAuxiliaryBar 执行成功（备用方案）');
 			}
-			
+
 			// 步骤3: 聚焦聊天视图
 			await vscode.commands.executeCommand('aiCoding.chatView.focus');
 			console.log('[AI Coding] ✓ chatView.focus 执行成功');
-			
+
 		} catch (err) {
 			console.error('[AI Coding] ✗ 命令执行失败:', err);
 			vscode.window.showErrorMessage(`AI Coding: 视图初始化失败 - ${err}`);
@@ -98,14 +98,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	soloBtn.show();
 	context.subscriptions.push(soloBtn);
 
-	// 记住活动栏和侧边栏是否已被隐藏（用于恢复）
+	// 记住活动栏是否已被隐藏（用于恢复）
 	let activityBarHiddenByUs = false;
-	let sidebarHiddenByUs = false;
 
 	/** 切换状态栏高亮，表示当前所处模式 */
 	function setMode(mode: 'ide' | 'solo') {
 		const active = new vscode.ThemeColor('statusBarItem.warningBackground');
-		ideBtn.backgroundColor  = mode === 'ide'  ? active : undefined;
+		ideBtn.backgroundColor = mode === 'ide' ? active : undefined;
 		soloBtn.backgroundColor = mode === 'solo' ? active : undefined;
 	}
 	setMode('ide'); // 默认 IDE 模式高亮
@@ -130,17 +129,6 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 			}
 
-			// 恢复侧边栏显示（如果我们之前隐藏了它，使用 toggle 保持视图状态）
-			if (sidebarHiddenByUs) {
-				try {
-					await vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
-					console.log('[AI Coding] ✓ 恢复侧边栏显示');
-					sidebarHiddenByUs = false;
-				} catch (e) {
-					console.warn('[AI Coding] ⚠ 恢复侧边栏失败:', e);
-				}
-			}
-
 			// 打开右侧辅助栏并聚焦聊天视图
 			await vscode.commands.executeCommand('workbench.action.focusAuxiliaryBar');
 			await vscode.commands.executeCommand('aiCoding.chatView.focus');
@@ -158,7 +146,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 
 			setMode('solo');
-			
+
 			// 隐藏活动栏（使用 toggle 命令）
 			const config = vscode.workspace.getConfiguration('workbench');
 			const activityBarVisible = config.get<boolean>('activityBar.visible');
@@ -171,16 +159,15 @@ export async function activate(context: vscode.ExtensionContext) {
 					console.warn('[AI Coding] ⚠ 隐藏活动栏失败:', e);
 				}
 			}
-			
-			// 隐藏侧边栏（使用 toggle 命令，保持视图状态）
+
+			// 关闭侧边栏（使用 close命令，不会反向打开）
 			try {
-				await vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
-				sidebarHiddenByUs = true;
-				console.log('[AI Coding] ✓ 隐藏侧边栏');
+				await vscode.commands.executeCommand('workbench.action.closeSidebar');
+				console.log('[AI Coding] ✓ 关闭侧边栏');
 			} catch (e) {
-				console.warn('[AI Coding] ⚠ 隐藏侧边栏失败:', e);
+				console.warn('[AI Coding] ⚠ 关闭侧边栏失败:', e);
 			}
-			
+
 			// 关闭底部面板
 			try {
 				await vscode.commands.executeCommand('workbench.action.closePanel');
@@ -188,7 +175,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			} catch (e) {
 				console.warn('[AI Coding] ⚠ 关闭面板失败:', e);
 			}
-			
+
 			// 关闭右侧辅助栏
 			try {
 				await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
@@ -219,22 +206,12 @@ export async function activate(context: vscode.ExtensionContext) {
 						console.warn('[AI Coding] ⚠ 恢复活动栏失败:', e);
 					}
 				}
-				// 恢复侧边栏显示（如果我们之前隐藏了它）
-				if (sidebarHiddenByUs) {
-					try {
-						await vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
-						console.log('[AI Coding] ✓ 恢复侧边栏显示');
-						sidebarHiddenByUs = false;
-					} catch (e) {
-						console.warn('[AI Coding] ⚠ 恢复侧边栏失败:', e);
-					}
-				}
 			});
 		}),
 	);
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
 // ─── HTML：侧边栏聊天视图（IDE 模式）────────────────────────────────────────
 

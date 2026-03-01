@@ -4,6 +4,7 @@ node_modules/
 # 编译输出
 out/
 dist/
+*.vsix
 
 # 日志
 *.log
@@ -21,3 +22,4 @@ Thumbs.db
 # 临时文件
 *.tmp
 .env.local
+
