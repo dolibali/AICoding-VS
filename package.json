@@ -3,7 +3,7 @@
 	"displayName": "AI Coding",
 	"description": "AI Coding 插件 Demo：IDE / SOLO 模式一键切换",
 	"version": "0.0.1",
-	"publisher": "vscode-samples",
+	"publisher": "ai-coding-demo",
 	"engines": {
 		"vscode": "^1.100.0"
 	},
@@ -71,7 +71,9 @@
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./"
+		"watch": "tsc -watch -p ./",
+		"build": "npm run compile",
+		"vsix": "vsce package"
 	},
 	"devDependencies": {
 		"@types/node": "^22",

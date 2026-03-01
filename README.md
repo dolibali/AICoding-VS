@@ -190,12 +190,23 @@ VS Code 的 `viewsContainers` 只支持 `activitybar`（左侧活动栏），不
 ```bash
 # 安装依赖
 npm install
+# 或使用 pnpm
+pnpm install
 
 # 编译 TypeScript
 npm run compile
+# 或
+npm run build
+# 或使用 pnpm
+pnpm build
 
 # 监听模式编译（开发时使用）
 npm run watch
+
+# 打包成 VSIX 文件
+npm run vsix
+# 或使用 pnpm
+pnpm vsix
 ```
 
 ## 调试方法
