@@ -110,17 +110,21 @@ vscode.commands.registerCommand('aiCoding.soloMode', async () => {
     return;
   }
   
-  // 1. 隐藏活动栏（先检查配置，避免重复切换）
-  const activityBarVisible = vscode.workspace.getConfiguration('workbench').get<boolean>('activityBar.visible');
-  if (activityBarVisible !== false) {
+  // 1. 隐藏活动栏（记录原始状态，用于恢复）
+  // 新版本使用 workbench.activityBar.location，旧版本使用 workbench.activityBar.visible
+  const config = vscode.workspace.getConfiguration('workbench');
+  originalActivityBarLocation = config.get<string>('activityBar.location');
+  originalActivityBarVisible = config.get<boolean>('activityBar.visible');
+  
+  // 只有当活动栏可见时才隐藏（避免反向打开）
+  if (originalActivityBarLocation !== 'hidden' && originalActivityBarVisible !== false) {
     await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
-    activityBarHiddenByUs = true;
   }
   
-  // 2. 关闭侧边栏（使用 close 而非 toggle，避免反向打开）
+  // 2. 关闭侧边栏（使用 close 而非 toggle，因为没有API检测状态）
   await vscode.commands.executeCommand('workbench.action.closeSidebar');
   
-  // 3. 关闭底部面板和辅助栏
+  // 3. 关闭底部面板和辅助栏（同样没有API检测状态）
   await vscode.commands.executeCommand('workbench.action.closePanel');
   await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
   
@@ -140,21 +144,37 @@ vscode.commands.registerCommand('aiCoding.soloMode', async () => {
 | `workbench.action.focusAuxiliaryBar` | 聚焦右侧辅助栏 |
 | `workbench.view.extension.<id>` | 打开指定的扩展视图容器 |
 
-> **注意**：VSCode 没有提供检查侧边栏是否可见的 API，因此使用 `closeSidebar` 而非 `toggleSidebarVisibility`。后者是 toggle 命令，如果侧边栏已经关闭，执行它会反而打开侧边栏。
+> **注意**：VSCode 没有提供检查侧边栏、辅助栏、面板是否可见的 API，因此这些元素使用 `close` 命令而非 `toggle` 命令。活动栏可以通过 `workbench.activityBar.location`（新版本）或 `workbench.activityBar.visible`（旧版本）配置项来检测状态，因此可以记录原始状态并在退出 SOLO 模式时恢复。
 
-### 6. 状态栏按钮
+### 6. UI 元素状态检测能力
+
+| UI 元素 | 状态检测方式 | 处理策略 |
+|---------|-------------|---------|
+| **活动栏** | `workbench.activityBar.location` (新) / `activityBar.visible` (旧) | 记录状态，恢复状态 |
+| **侧边栏** | 无 API | 使用 `closeSidebar` 关闭 |
+| **辅助栏** | 无 API | 使用 `closeAuxiliaryBar` 关闭 |
+| **面板** | 无 API | 使用 `closePanel` 关闭 |
+
+### 7. 状态栏按钮
 
 ```typescript
-const ideBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+// 优先级数字越大越靠左，使用较大的数字确保按钮在最左侧
+const ideBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000);
 ideBtn.text = '$(layout-sidebar-right) IDE';
 ideBtn.command = 'aiCoding.ideMode';
 ideBtn.show();
+
+const soloBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 999);
+soloBtn.text = '$(screen-full) SOLO';
+soloBtn.command = 'aiCoding.soloMode';
+soloBtn.show();
 ```
 
 - `StatusBarAlignment.Left`：显示在状态栏左侧
 - 第二个参数是优先级（数字越大越靠左）
+- 使用较大的数字（1000/999）确保按钮在最左侧，且两个按钮紧挨着
 
-### 7. 启动时自动打开视图
+### 8. 启动时自动打开视图
 
 ```typescript
 setTimeout(async () => {

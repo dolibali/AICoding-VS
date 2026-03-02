@@ -84,22 +84,25 @@ export async function activate(context: vscode.ExtensionContext) {
 	// VS Code 扩展无法在顶部标题栏（Command Center 那一行）添加按钮，
 	// 这是平台限制，只有 fork VS Code 才能实现（如 Cursor）。
 	// 状态栏是扩展能使用的唯一"始终可见"位置，放在左侧最醒目的位置。
-	const ideBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+	// 优先级数字越大越靠左，使用较大的数字确保按钮在最左侧
+	const ideBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000);
 	ideBtn.text = '$(layout-sidebar-right) IDE';
 	ideBtn.command = 'aiCoding.ideMode';
 	ideBtn.tooltip = '切换到 IDE 模式（侧边栏聊天）';
 	ideBtn.show();
 	context.subscriptions.push(ideBtn);
 
-	const soloBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+	const soloBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 999);
 	soloBtn.text = '$(screen-full) SOLO';
 	soloBtn.command = 'aiCoding.soloMode';
 	soloBtn.tooltip = '切换到 SOLO 模式（全屏聊天）';
 	soloBtn.show();
 	context.subscriptions.push(soloBtn);
 
-	// 记住活动栏是否已被隐藏（用于恢复）
-	let activityBarHiddenByUs = false;
+	// 记住活动栏的原始状态（用于恢复）
+	// 新版本使用 workbench.activityBar.location，旧版本使用 workbench.activityBar.visible
+	let originalActivityBarLocation: string | undefined;
+	let originalActivityBarVisible: boolean | undefined;
 
 	/** 切换状态栏高亮，表示当前所处模式 */
 	function setMode(mode: 'ide' | 'solo') {
@@ -119,11 +122,20 @@ export async function activate(context: vscode.ExtensionContext) {
 			soloPanel = undefined;
 
 			// 恢复活动栏显示（如果我们之前隐藏了它）
-			if (activityBarHiddenByUs) {
+			// 优先使用新版本的 location 配置，其次使用旧版本的 visible 配置
+			if (originalActivityBarLocation !== undefined || originalActivityBarVisible !== undefined) {
 				try {
-					await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
-					console.log('[AI Coding] ✓ 恢复活动栏显示');
-					activityBarHiddenByUs = false;
+					const config = vscode.workspace.getConfiguration('workbench');
+					const currentLocation = config.get<string>('activityBar.location');
+					
+					// 如果当前是 hidden，且原始状态不是 hidden，则恢复
+					if (currentLocation === 'hidden' && originalActivityBarLocation !== 'hidden') {
+						await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
+						console.log('[AI Coding] ✓ 恢复活动栏显示');
+					}
+					// 清除记录的状态
+					originalActivityBarLocation = undefined;
+					originalActivityBarVisible = undefined;
 				} catch (e) {
 					console.warn('[AI Coding] ⚠ 恢复活动栏失败:', e);
 				}
@@ -147,13 +159,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
 			setMode('solo');
 
-			// 隐藏活动栏（使用 toggle 命令）
+			// 隐藏活动栏（记录原始状态，用于恢复）
+			// 新版本使用 workbench.activityBar.location，旧版本使用 workbench.activityBar.visible
 			const config = vscode.workspace.getConfiguration('workbench');
-			const activityBarVisible = config.get<boolean>('activityBar.visible');
-			if (activityBarVisible !== false) {
+			originalActivityBarLocation = config.get<string>('activityBar.location');
+			originalActivityBarVisible = config.get<boolean>('activityBar.visible');
+			
+			// 只有当活动栏可见时才隐藏（避免反向打开）
+			if (originalActivityBarLocation !== 'hidden' && originalActivityBarVisible !== false) {
 				try {
 					await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
-					activityBarHiddenByUs = true;
 					console.log('[AI Coding] ✓ 隐藏活动栏');
 				} catch (e) {
 					console.warn('[AI Coding] ⚠ 隐藏活动栏失败:', e);
@@ -197,11 +212,19 @@ export async function activate(context: vscode.ExtensionContext) {
 				// 用户关闭面板时，切换回 IDE 模式
 				setMode('ide');
 				// 恢复活动栏显示（如果我们之前隐藏了它）
-				if (activityBarHiddenByUs) {
+				if (originalActivityBarLocation !== undefined || originalActivityBarVisible !== undefined) {
 					try {
-						await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
-						console.log('[AI Coding] ✓ 恢复活动栏显示');
-						activityBarHiddenByUs = false;
+						const config = vscode.workspace.getConfiguration('workbench');
+						const currentLocation = config.get<string>('activityBar.location');
+						
+						// 如果当前是 hidden，且原始状态不是 hidden，则恢复
+						if (currentLocation === 'hidden' && originalActivityBarLocation !== 'hidden') {
+							await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
+							console.log('[AI Coding] ✓ 恢复活动栏显示');
+						}
+						// 清除记录的状态
+						originalActivityBarLocation = undefined;
+						originalActivityBarVisible = undefined;
 					} catch (e) {
 						console.warn('[AI Coding] ⚠ 恢复活动栏失败:', e);
 					}
