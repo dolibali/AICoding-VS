@@ -7,7 +7,7 @@
 - **IDE 模式**：在右侧辅助栏显示聊天界面，不影响正常编码
 - **SOLO 模式**：全屏聊天界面，隐藏所有干扰元素
 - **状态栏按钮**：快速切换两种模式
-- **状态保持**：切换回 IDE 模式时恢复之前的侧边栏视图状态
+- **活动栏状态恢复**：切换回 IDE 模式时恢复活动栏显示（如果之前被隐藏）
 
 ## 目录结构
 
@@ -89,12 +89,9 @@ vscode.commands.registerCommand('aiCoding.ideMode', async () => {
   // 1. 关闭 SOLO 面板
   soloPanel?.dispose();
   
-  // 2. 恢复活动栏和侧边栏
+  // 2. 恢复活动栏显示（如果之前被隐藏）
   if (activityBarHiddenByUs) {
     await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
-  }
-  if (sidebarHiddenByUs) {
-    await vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
   }
   
   // 3. 聚焦辅助栏聊天视图
@@ -113,11 +110,15 @@ vscode.commands.registerCommand('aiCoding.soloMode', async () => {
     return;
   }
   
-  // 1. 隐藏活动栏
-  await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
+  // 1. 隐藏活动栏（先检查配置，避免重复切换）
+  const activityBarVisible = vscode.workspace.getConfiguration('workbench').get<boolean>('activityBar.visible');
+  if (activityBarVisible !== false) {
+    await vscode.commands.executeCommand('workbench.action.toggleActivityBarVisibility');
+    activityBarHiddenByUs = true;
+  }
   
-  // 2. 隐藏侧边栏（使用 toggle 保持视图状态）
-  await vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
+  // 2. 关闭侧边栏（使用 close 而非 toggle，避免反向打开）
+  await vscode.commands.executeCommand('workbench.action.closeSidebar');
   
   // 3. 关闭底部面板和辅助栏
   await vscode.commands.executeCommand('workbench.action.closePanel');
@@ -132,12 +133,14 @@ vscode.commands.registerCommand('aiCoding.soloMode', async () => {
 
 | 命令 | 作用 |
 |------|------|
-| `workbench.action.toggleActivityBarVisibility` | 切换活动栏可见性（保持状态） |
-| `workbench.action.toggleSidebarVisibility` | 切换侧边栏可见性（保持视图状态） |
+| `workbench.action.toggleActivityBarVisibility` | 切换活动栏可见性 |
+| `workbench.action.closeSidebar` | 关闭侧边栏（单向操作，不会反向打开） |
 | `workbench.action.closePanel` | 关闭底部面板 |
 | `workbench.action.closeAuxiliaryBar` | 关闭右侧辅助栏 |
 | `workbench.action.focusAuxiliaryBar` | 聚焦右侧辅助栏 |
 | `workbench.view.extension.<id>` | 打开指定的扩展视图容器 |
+
+> **注意**：VSCode 没有提供检查侧边栏是否可见的 API，因此使用 `closeSidebar` 而非 `toggleSidebarVisibility`。后者是 toggle 命令，如果侧边栏已经关闭，执行它会反而打开侧边栏。
 
 ### 6. 状态栏按钮
 
